@@ -1,0 +1,65 @@
+version: '2'
+services:
+  products:
+    container_name: products
+    image: bifrostuzh/microservices-sample-products
+    env_file: .env_proxied
+    depends_on:
+      - mongo
+    environment:
+      - "constraint:node==bifrost-gce-swarm-node-3"
+
+  products_a:
+    container_name: products_a
+    image: bifrostuzh/microservices-sample-products
+    env_file: .env_proxied
+    depends_on:
+      - mongo
+    environment:
+      - "constraint:node==bifrost-gce-swarm-node-3"
+
+  # cAdvisor Docker Metrics
+  cadvisor:
+    container_name: cadvisor
+    image: google/cadvisor:v0.23.0
+    expose:
+      - "8080"
+    volumes:
+      - /:/rootfs
+      - /var/run:/var/run
+      - /sys:/sys
+      - /var/lib/docker/:/var/lib/docker
+    environment:
+      - "constraint:node==bifrost-gce-swarm-node-3"
+
+  # Mongo DB Service
+  mongo:
+    container_name: mongo
+    image: mongo:3.2.1
+    volumes:
+      - ./data:/data/db
+    environment:
+      - "constraint:node==bifrost-gce-swarm-node-3"
+
+  prometheus:
+    container_name: prometheus
+    image: bifrostuzh/microservices-sample-prometheus
+    expose:
+     - "9090"
+    environment:
+      - "constraint:node==bifrost-gce-swarm-node-3"
+
+  ### bifrost-engine ###
+  bifrost:
+    container_name: bifrost
+    tty: true
+    image: bifrostuzh/engine
+    expose:
+      - "8181"
+    environment:
+      - "NODE_ENV=production"
+      - "PROMETHEUS=http://prometheus:9090"
+      - "PORT=8181"
+      - "PROXY_API_PORT=9090"
+      - "LOG_LEVEL=info"
+      - "constraint:node==bifrost-gce-swarm-node-4"

@@ -1,0 +1,103 @@
+version: '2'
+services:
+  products:
+    image: bifrostuzh/microservices-sample-products
+    env_file: .env_proxied
+    depends_on:
+      - mongo
+      - auth
+
+  products_a:
+    image: bifrostuzh/microservices-sample-products
+    env_file: .env_proxied
+    depends_on:
+      - mongo
+      - auth
+    environment:
+      - "VERSION:a"
+
+  products_b:
+    image: bifrostuzh/microservices-sample-products
+    env_file: .env_proxied
+    depends_on:
+      - mongo
+      - auth
+    environment:
+      - "VERSION:b"
+
+  # Auth Service
+  auth:
+    image: bifrostuzh/microservices-sample-auth
+    env_file: .env_proxied
+    depends_on:
+      - mongo
+
+  # Search Service
+  search:
+    image: bifrostuzh/microservices-sample-search
+    env_file: .env_proxied
+    depends_on:
+      - mongo
+      - auth
+
+  # Mongo DB Service
+  mongo:
+    image: mongo:3.2.1
+    volumes:
+      - ./data:/data/db
+
+  # Metrics Collector
+  prometheus:
+    image: bifrostuzh/microservices-sample-prometheus
+    expose:
+     - "9090"
+
+  # cadvisor	 
+  cadvisor:
+    image: google/cadvisor:v0.23.0
+    expose:
+      - "8080"
+    volumes:
+      - /:/rootfs
+      - /var/run:/var/run
+      - /sys:/sys
+      - /var/lib/docker/:/var/lib/docker
+
+  ### bifrost-engine ###
+  bifrost:
+   tty: true
+   image: bifrostuzh/engine
+   expose:
+    - "8181"
+   environment:
+    - "NODE_ENV=production"
+    - "PROMETHEUS=http://prometheus:9090"
+    - "PORT=8181"
+    - "PROXY_API_PORT=9090"
+    - "LOG_LEVEL=info"
+
+  products_proxy:
+   tty: true
+   image: bifrostuzh/proxy
+   depends_on:
+     - products
+     - products_a
+     - products_b
+   expose:
+    - "80"
+   environment:
+    - "NODE_ENV=production"
+    - "PROXIED_HOST=products"
+    - "PROXIED_PORT=80"
+
+  search_proxy:
+   tty: true
+   image: bifrostuzh/proxy
+   expose:
+    - "80"
+   environment:
+    - "NODE_ENV=production"
+    - "PROXIED_HOST=search"
+    - "PROXIED_PORT=80"
+   depends_on:
+     - search
